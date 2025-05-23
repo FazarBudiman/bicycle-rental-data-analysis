@@ -10,21 +10,62 @@ bike_in_hour_df = pd.read_csv('dataset/bike_in_hour.csv')
 
 st.title("Dashboard Analisis Penyewaan Sepeda")
 
-colors = ['#3867d6', '#fa8231']
-
-st.subheader("Pengaruh Kondisi Hari Terhadap Penyewaan Sepeda")
-pivot_day_condition = bike_in_day_df.pivot_table(
-    values='cnt',
-    index='day_condition',
-    aggfunc='mean'
+# Tambahkan pilihan untuk jenis visualisasi
+st.sidebar.header("Pengaturan Visualisasi Tren Penyewaan Per Jam")
+chart_type = st.sidebar.radio(
+    "Pilih tampilan data:",
+    ["Total Penyewaan Sepeda", "Proporsi dari Jenis Pengguna"],
+    horizontal=True
 )
+ 
+st.subheader("Pengaruh Kondisi Hari Terhadap Penyewaan Sepeda")
+# Hitung rata-rata untuk setiap kategori berdasarkan kondisi hari
+avg_by_day_condition = bike_in_day_df.groupby('day_condition')[['casual', 'registered', 'cnt']].mean().reset_index()
+
+# Buat grafik berdasarkan pilihan
 plt.figure(figsize=(14, 8))
-bars = plt.bar(pivot_day_condition.index, pivot_day_condition['cnt'], color=colors, width=0.6, 
-              edgecolor='black', linewidth=0.5)
-plt.title('Pengaruh Kondisi Hari terhadap Penyewaan Sepeda', fontsize=16, fontweight='bold')
+if chart_type == "Total Penyewaan Sepeda":
+    bars = plt.bar(avg_by_day_condition['day_condition'], avg_by_day_condition['cnt'], 
+                   color='darkblue', width=0.6, edgecolor='black', linewidth=0.5)
+    
+    for i, (condition, cnt) in enumerate(zip(avg_by_day_condition['day_condition'], avg_by_day_condition['cnt'])):
+        plt.text(i, cnt + 50, f'{cnt:.0f}', ha='center', va='bottom', fontweight='bold', fontsize=12)
+    
+    plt.ylabel('Rata-rata Penyewaan Sepeda', fontsize=14)
+    
+else:
+    # Stacked bar chart dengan breakdown casual + registered
+    bar_width = 0.6
+    x_pos = range(len(avg_by_day_condition['day_condition']))
+    
+    bars1 = plt.bar(x_pos, avg_by_day_condition['casual'], 
+                    bar_width, label='Casual', color='lightblue', 
+                    edgecolor='black', linewidth=0.5)
+    
+    bars2 = plt.bar(x_pos, avg_by_day_condition['registered'], 
+                    bar_width, bottom=avg_by_day_condition['casual'], 
+                    label='Registered', color='darkblue', 
+                    edgecolor='black', linewidth=0.5)
+    
+    # Tambahkan nilai di atas setiap bar
+    for i, (casual, registered, total) in enumerate(zip(avg_by_day_condition['casual'], 
+                                                       avg_by_day_condition['registered'], 
+                                                       avg_by_day_condition['cnt'])):
+        plt.text(i, total + 50, f'{total:.0f}', ha='center', va='bottom', fontweight='bold', fontsize=12)
+        plt.text(i, casual/2, f'{casual:.0f}', ha='center', va='center', fontweight='bold', color='white', fontsize=10)
+        plt.text(i, casual + registered/2, f'{registered:.0f}', ha='center', va='center', fontweight='bold', color='white', fontsize=10)
+    
+    plt.ylabel('Rata-rata Penyewaan Sepeda', fontsize=14)
+
 plt.xlabel('Kondisi Hari', fontsize=14)
-plt.ylabel('Rata-rata Penyewaan Sepeda', fontsize=14)
-plt.xticks(rotation=45)
+plt.xticks(range(len(avg_by_day_condition['day_condition'])), avg_by_day_condition['day_condition'])
+
+# Tampilkan legend hanya untuk breakdown chart
+if chart_type == "Proporsi dari Jenis Pengguna":
+    plt.legend(fontsize=12)
+
+plt.grid(axis='y', alpha=0.3)
+plt.tight_layout()
 st.pyplot(plt)
 
 
@@ -48,8 +89,8 @@ holiday = filtered_df[filtered_df['day_condition'] == 'Hari Libur'].groupby('hr'
 # Plotting
 plt.figure(figsize=(10, 5))
 colors = sns.color_palette("Set2", 2)  # Warna default jika belum didefinisikan
-sns.lineplot(x=work_day.index, y=work_day.values, label='Hari Kerja', color='#3867d6')
-sns.lineplot(x=holiday.index, y=holiday.values, label='Hari Libur', color='#fa8231')
+sns.lineplot(x=work_day.index, y=work_day.values, label='Hari Kerja', color='darkblue')
+sns.lineplot(x=holiday.index, y=holiday.values, label='Hari Libur', color='darkorange')
 plt.xlabel('Waktu/Jam dalam Sehari')
 plt.ylabel('Rata-rata Penyewaan Sepeda')
 plt.title('Tren Penyewaan Sepeda per Jam di Hari Kerja dan Hari Libur')
